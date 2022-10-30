@@ -1,0 +1,22 @@
+[package]
+name = "gadacz"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+crossterm = "0.25"
+tui = "0.19"
+
+gstreamer = "0.19"
+gstreamer-audio = "0.19"
+gstreamer-pbutils = "0.19"
+glib = "0.16"
+
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+mp4ameta = { git = "https://github.com/Saecki/mp4ameta", rev = "c970fb16a3bc4bcf18a7302d65cc7955964dc7c0" }
+eyre = "0.6.8"
+color-eyre = "0.6.2"
