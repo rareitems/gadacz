@@ -2,6 +2,8 @@
 
 A Terminal User Interface (TUI) for playing audiobooks (and other audio files)
 
+![screen_2022-10-19_14-56](https://user-images.githubusercontent.com/83038443/198891245-b48c511e-d140-4349-8525-2bbf857e13b9.png)
+
 ## Features
 
 - remembers the last file (or m4a/m4b chapter) played and position inside it
