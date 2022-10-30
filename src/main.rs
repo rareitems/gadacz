@@ -311,7 +311,6 @@ fn run_app<B: Backend>(
                         };
                     }
 
-
                     // Saves the position
                     KeyCode::Char('z') => {
                         if let Some(pos) = app.player.get_position_sec() {
