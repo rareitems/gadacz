@@ -74,7 +74,7 @@ fn render<B: Backend>(f: &mut tui::Frame<B>, app: &mut App, mediainfo: &MediaInf
     f.render_widget(Clear, area); //this clears out the background
     f.render_widget(block, area);
 
-    let count = (app.ui.keybindings_list.len() / 2) as usize;
+    let count = app.ui.keybindings_list.len() / 2;
     let list0: Vec<_> =
         app.ui.keybindings_list.iter().take(count).map(|it| ListItem::new(*it)).collect();
     let list1: Vec<_> =

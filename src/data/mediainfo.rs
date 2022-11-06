@@ -319,7 +319,12 @@ fn scan_dir(path: &Path) -> Result<Vec<PathBuf>, Error> {
                 std::result::Result::Err(err) => return Some(Err(Error::FromIo(err))),
             };
 
+
             let file = it.path();
+
+            if file.is_dir() {
+                return None;
+            }
 
             let ext = if let Some(ext) = file.extension() {
                 ext.to_str().unwrap()

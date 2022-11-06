@@ -45,7 +45,7 @@ impl Ui {
                 "; : Jump to arbitrary position",
                 "a : Add new bookmark",
                 "b : Bookmark menu (only this chapter)",
-                "b : Bookmark menu (all chapters)",
+                "B : Bookmark menu (all chapters)",
                 "h : Move 5 seconds backwards",
                 "j : Move 1 chapter forwards",
                 "k : Move 1 chapter backwards",
@@ -230,11 +230,9 @@ pub fn render<'a, B: Backend>(f: &mut tui::Frame<B>, app: &mut App, mediainfo: &
         } else {
             2 + s
         }
-    } else if playlist_height - (app.current_chapter_index + 1) == 1 {
-        1
-    } else {
-        0
-    };
+    } else { usize::from(playlist_height - (app.current_chapter_index + 1) == 1) };
+
+    // NumberType::from(playlist_height - (app.current_chapter_index + 1) == 1)
 
     if let Some(pl_percentages) = app.cache.pl_percentages.as_ref() {
         let list = List::new(&**pl_percentages);
