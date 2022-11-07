@@ -65,6 +65,7 @@ impl Ui {
                 "F : Set 100% completion and move to next chapter",
                 ": : Go to the position before the jump or bookmark(for current chapter) change",
                 ", : Go to position and chapter before the bookmark(for all chapters) change",
+                "C-a : Toggle antispoiler mode",
             ],
         }
     }
@@ -81,7 +82,7 @@ impl Default for Ui {
     }
 }
 
-pub fn render<'a, B: Backend>(f: &mut tui::Frame<B>, app: &mut App, mediainfo: &'a MediaInfo) {
+pub fn render<B: Backend>(f: &mut tui::Frame<B>, app: &mut App, mediainfo: &MediaInfo) {
     let current_chapter = app.get_current_chapter(mediainfo);
 
     // Splitting the space into 3 parts
@@ -230,7 +231,9 @@ pub fn render<'a, B: Backend>(f: &mut tui::Frame<B>, app: &mut App, mediainfo: &
         } else {
             2 + s
         }
-    } else { usize::from(playlist_height - (app.current_chapter_index + 1) == 1) };
+    } else {
+        usize::from(playlist_height - (app.current_chapter_index + 1) == 1)
+    };
 
     // NumberType::from(playlist_height - (app.current_chapter_index + 1) == 1)
 
@@ -238,34 +241,7 @@ pub fn render<'a, B: Backend>(f: &mut tui::Frame<B>, app: &mut App, mediainfo: &
         let list = List::new(&**pl_percentages);
         f.render_widget(list, playlist_chunk[0]);
     } else {
-        let percentages: Vec<_> = mediainfo
-            .chapters
-            .iter()
-            .skip(skip)
-            .take(playlist_height)
-            .map(|x| {
-                let perc = {
-                    let p = (((x.last_position as f64 - x.start_position.unwrap_or(0) as f64)
-                        / x.length as f64)
-                        * 100.0)
-                        .ceil() as u16;
-
-                    if p >= 100 { 100 } else { p }
-                };
-                let string = format!("{perc}%");
-
-                if perc >= 75 {
-                    ListItem::new(string).style(Style::default().fg(Color::Green))
-                } else if perc >= 50 {
-                    ListItem::new(string).style(Style::default().fg(Color::LightGreen))
-                } else if perc >= 25 {
-                    ListItem::new(string).style(Style::default().fg(Color::Gray))
-                } else {
-                    ListItem::new(string).style(Style::default().fg(Color::DarkGray))
-                }
-            })
-            .collect();
-        app.cache.pl_percentages = Some(percentages);
+        new_percentages(mediainfo, skip, playlist_height, app);
         let list = List::new(&**app.cache.pl_percentages.as_ref().unwrap());
         f.render_widget(list, playlist_chunk[0]);
     }
@@ -297,22 +273,7 @@ pub fn render<'a, B: Backend>(f: &mut tui::Frame<B>, app: &mut App, mediainfo: &
         let list = List::new(&**titles).style(Style::default().fg(Color::White));
         f.render_widget(list, playlist_chunk[2]);
     } else {
-        let titles: Vec<_> = mediainfo
-            .chapters
-            .iter()
-            .skip(skip)
-            .take(playlist_height)
-            .map(|x| {
-                ListItem::new({
-                    if let Some(desc) = &x.description {
-                        format!("{} [{}]", x.get_title_or_filename(), desc)
-                    } else {
-                        x.get_title_or_filename().clone()
-                    }
-                })
-            })
-            .collect();
-        app.cache.pl_titles = Some(titles);
+        new_titles(mediainfo, skip, playlist_height, app);
         let list = List::new(&**app.cache.pl_titles.as_ref().unwrap())
             .style(Style::default().fg(Color::White));
         f.render_widget(list, playlist_chunk[2]);
@@ -322,14 +283,7 @@ pub fn render<'a, B: Backend>(f: &mut tui::Frame<B>, app: &mut App, mediainfo: &
         let list = List::new(&**lengths).style(Style::default().fg(Color::White));
         f.render_widget(list, playlist_chunk[4]);
     } else {
-        let lengths: Vec<_> = mediainfo
-            .chapters
-            .iter()
-            .skip(skip)
-            .take(playlist_height)
-            .map(|x| ListItem::new(x.length_display.clone()))
-            .collect();
-        app.cache.pl_lengths = Some(lengths);
+        new_lengths(mediainfo, skip, playlist_height, app);
         let list = List::new(&**app.cache.pl_lengths.as_ref().unwrap())
             .style(Style::default().fg(Color::White));
         f.render_widget(list, playlist_chunk[4]);
@@ -339,14 +293,7 @@ pub fn render<'a, B: Backend>(f: &mut tui::Frame<B>, app: &mut App, mediainfo: &
         let list = List::new(&**pl_bks_count).style(Style::default().fg(Color::White));
         f.render_widget(list, playlist_chunk[6]);
     } else {
-        let bks_count: Vec<_> = mediainfo
-            .chapters
-            .iter()
-            .skip(skip)
-            .take(playlist_height)
-            .map(|x| ListItem::new(x.bookmarks.len().to_string()))
-            .collect();
-        app.cache.pl_bks_count = Some(bks_count);
+        new_bks_counts(mediainfo, skip, playlist_height, app);
         let list = List::new(&**app.cache.pl_bks_count.as_ref().unwrap())
             .style(Style::default().fg(Color::White));
         f.render_widget(list, playlist_chunk[6]);
@@ -531,4 +478,144 @@ pub fn centered_rect_flat(flat_x: u16, flat_y: u16, r: Rect) -> Option<Rect> {
             ])
             .split(popup_layout[1])[1],
     )
+}
+
+// Computes new lengths to be shown in the playlist chunk and assigns them to cache
+fn new_lengths(mediainfo: &MediaInfo, skip: usize, playlist_height: usize, app: &mut App) {
+    app.cache.pl_lengths = Some(
+        // if mediainfo.is_antispoiler {
+        if mediainfo.is_antispoiler {
+            (0..playlist_height)
+                .into_iter()
+                .skip(skip)
+                .map(|i| {
+                    if mediainfo.is_antispoiler && i > app.current_chapter_index {
+                        ListItem::new("######").style(Style::default().fg(Color::White))
+                    } else {
+                        ListItem::new(mediainfo.chapters[i].length_display.clone())
+                    }
+                })
+                .collect()
+        } else {
+            mediainfo
+                .chapters
+                .iter()
+                .skip(skip)
+                .take(playlist_height)
+                .map(|x| ListItem::new(x.length_display.clone()))
+                .collect()
+        },
+    );
+}
+
+// Computes new percentages to be shown in the playlist chunk and assigns them to cache
+fn new_percentages(mediainfo: &MediaInfo, skip: usize, playlist_height: usize, app: &mut App) {
+    fn format_perc(
+        start_position: Option<u64>,
+        last_position: u64,
+        length: u64,
+    ) -> ListItem<'static> {
+        let perc = {
+            let p = (((last_position as f64 - start_position.unwrap_or(0) as f64) / length as f64)
+                * 100.0)
+                .ceil() as u16;
+
+            if p >= 100 { 100 } else { p }
+        };
+        let string = format!("{perc}%");
+        if perc >= 75 {
+            ListItem::new(string).style(Style::default().fg(Color::Green))
+        } else if perc >= 50 {
+            ListItem::new(string).style(Style::default().fg(Color::LightGreen))
+        } else if perc >= 25 {
+            ListItem::new(string).style(Style::default().fg(Color::Gray))
+        } else {
+            ListItem::new(string).style(Style::default().fg(Color::DarkGray))
+        }
+    }
+
+    app.cache.pl_percentages = Some(if mediainfo.is_antispoiler {
+        (0..playlist_height)
+            .into_iter()
+            .skip(skip)
+            .map(|i| {
+                if mediainfo.is_antispoiler && i > app.current_chapter_index {
+                    ListItem::new("###").style(Style::default().fg(Color::White))
+                } else {
+                    let x = &mediainfo.chapters[i];
+                    format_perc(x.start_position, x.last_position, x.length)
+                }
+            })
+            .collect()
+    } else {
+        mediainfo
+            .chapters
+            .iter()
+            .skip(skip)
+            .take(playlist_height)
+            .map(|x| format_perc(x.start_position, x.last_position, x.length))
+            .collect()
+    });
+}
+
+// Computes new titles to be shown in the playlist chunk and assigns them to cache
+fn new_titles(mediainfo: &MediaInfo, skip: usize, playlist_height: usize, app: &mut App) {
+    app.cache.pl_titles = Some(if mediainfo.is_antispoiler {
+        (0..playlist_height)
+            .into_iter()
+            .skip(skip)
+            .map(|i| {
+                if i > app.current_chapter_index {
+                    ListItem::new("##########").style(Style::default().fg(Color::White))
+                } else {
+                    let x = &mediainfo.chapters[i];
+                    if let Some(desc) = &x.description {
+                        ListItem::new(format!("{} [{}]", x.get_title_or_filename(), desc))
+                    } else {
+                        ListItem::new(x.get_title_or_filename().clone())
+                    }
+                }
+            })
+            .collect()
+    } else {
+        mediainfo
+            .chapters
+            .iter()
+            .skip(skip)
+            .take(playlist_height)
+            .map(|x| {
+                ListItem::new({
+                    if let Some(desc) = &x.description {
+                        format!("{} [{}]", x.get_title_or_filename(), desc)
+                    } else {
+                        x.get_title_or_filename().clone()
+                    }
+                })
+            })
+            .collect()
+    })
+}
+
+fn new_bks_counts(mediainfo: &MediaInfo, skip: usize, playlist_height: usize, app: &mut App) {
+    app.cache.pl_bks_count = Some(if mediainfo.is_antispoiler {
+        (0..playlist_height)
+            .into_iter()
+            .skip(skip)
+            .map(|i| {
+                if i > app.current_chapter_index {
+                    ListItem::new("#").style(Style::default().fg(Color::White))
+                } else {
+                    ListItem::new(mediainfo.chapters[i].bookmarks.len().to_string())
+                }
+            })
+            .collect()
+    } else {
+        mediainfo
+            .chapters
+            .iter()
+            .skip(skip)
+            .take(playlist_height)
+            .map(|x| ListItem::new(x.bookmarks.len().to_string()))
+            .collect()
+    })
 }

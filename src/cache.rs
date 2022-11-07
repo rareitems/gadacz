@@ -89,6 +89,14 @@ impl Cache<'_> {
         self.pl_percentages = None;
         self.pl_titles = None;
     }
+
+    pub fn invalide_all(&mut self) {
+        self.formmated_now = None;
+        self.formatted_abs_now = None;
+        self.formatted_length = None;
+        self.invalidate_bks();
+        self.invalidate_pls();
+    }
 }
 
 impl Default for Cache<'_> {

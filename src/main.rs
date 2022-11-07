@@ -50,24 +50,63 @@ macro_rules! match_cflow {
     };
 }
 
+fn print_help_menu() {
+    println!(
+        "TUI Audiobook player
+
+USAGE:
+gadacz [OPTIONS] [PATH]
+
+OPTIONS:
+-a, --antispoiler   Turn on antispoiler mode (hides the names of the chapters, number of chapters)
+-h, --helpr         Pring help information
+"
+    );
+}
+
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
     gst::init()?;
 
     let mut args = std::env::args();
     args.next();
-    let arg = args.next();
 
-    let path = match arg {
-        Some(path) => path,
+    let args: Vec<String> = args.collect();
+
+    let mut path: Option<&str> = None;
+    let mut antispoiler_mode: bool = false;
+
+    if args.is_empty() {
+        return Err(eyre::eyre!("No argument provided")
+            .suggestion("Provide a path to the directory you want to play."));
+    }
+
+    for args in &args {
+        match args.as_str() {
+            "--help" | "-h" => {
+                print_help_menu();
+                return Ok(());
+            }
+            "--antispoiler" | "-a" => {
+                antispoiler_mode = true;
+            }
+            p => path = Some(p),
+        }
+    }
+
+    let path = match path {
+        Some(path) => std::path::PathBuf::from(&path).canonicalize()?,
         None => {
-            return Err(eyre::eyre!("No argument provided")
+            return Err(eyre::eyre!("No path provided")
                 .suggestion("Provide a path to the directory you want to play."));
         }
     };
 
-    let path = std::path::PathBuf::from(&path).canonicalize()?;
-    let mediainfo = MediaInfo::from_cache_or_new(&path)?;
+    let mut mediainfo = MediaInfo::from_cache_or_new(&path)?;
+    mediainfo.sort_all_bk();
+
+    mediainfo.is_antispoiler = mediainfo.is_antispoiler || antispoiler_mode;
+
     let player = Player::default();
 
     // setup terminal
@@ -148,6 +187,11 @@ fn run_app<B: Backend>(
                     )?,
 
                     KeyCode::Char('D') => actions::delete_description(app, &mut mediainfo),
+
+                    KeyCode::Char('a') if key.modifiers == KeyModifiers::CONTROL => {
+                        mediainfo.is_antispoiler = !mediainfo.is_antispoiler;
+                        app.cache.invalidate_pls();
+                    }
 
                     KeyCode::Char('a') => match_cflow!(actions::add_bookmark(
                         app,
@@ -435,11 +479,7 @@ impl<'app> App<'app> {
     }
 
     fn load_chapter(&mut self, chapter_index: usize, mediainfo: &MediaInfo) {
-        self.cache.formmated_now = None;
-        self.cache.formatted_abs_now = None;
-        self.cache.formatted_length = None;
-        self.cache.invalidate_bks();
-        self.cache.invalidate_pls();
+        self.cache.invalide_all();
 
         self.player.null();
         self.player = Player::default();

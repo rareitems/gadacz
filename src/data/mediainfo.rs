@@ -56,6 +56,9 @@ pub struct MediaInfo {
     #[serde(skip)]
     pub path: PathBuf, // path for the currently playing book
 
+    #[serde(default)]
+    pub is_antispoiler: bool, // if true antispoiler mode is active
+
     pub speed: f64,
     pub volume: f64,
     pub last_chapter: usize,    // index of the last played chapter
@@ -190,6 +193,7 @@ impl MediaInfo {
         }
 
         let mut mediainfo = Self {
+            is_antispoiler: false,
             last_chapter: 0,
             speed: 1.0,
             volume: 0.5,
@@ -236,6 +240,12 @@ impl MediaInfo {
                 },
             }
         });
+    }
+
+    pub fn sort_all_bk(&mut self) {
+        self.chapters
+            .iter_mut()
+            .for_each(|chapter| chapter.bookmarks.sort_by(|a, b| a.position.cmp(&b.position)))
     }
 
     pub fn save_to_file(&self) -> EyreResult<()> {
@@ -318,7 +328,6 @@ fn scan_dir(path: &Path) -> Result<Vec<PathBuf>, Error> {
                 std::result::Result::Ok(ok) => ok,
                 std::result::Result::Err(err) => return Some(Err(Error::FromIo(err))),
             };
-
 
             let file = it.path();
 
