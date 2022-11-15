@@ -11,6 +11,7 @@ A Terminal User Interface (TUI) for playing audiobooks (and other audio files)
 - playback speed control
 - bookmarks
 - supports m4a/m4b files with chapters
+- antispoiler mode (hides number and names of chapters past the currently selected one)
 
 ## Requirements
 
@@ -38,4 +39,4 @@ cargo install --path .
 ```
 gadacz <path_to_your_audiobook>
 ```
-Press '?' for a complete list of keymap.
+Press '?' for a complete list of keymaps.
