@@ -58,8 +58,8 @@ USAGE:
 gadacz [OPTIONS] [PATH]
 
 OPTIONS:
--a, --antispoiler   Turn on antispoiler mode (hides the names of the chapters, number of chapters)
--h, --helpr         Pring help information
+-a, --antispoiler   Turn on antispoiler mode (hides the names of the chapters and remaining number of chapters)
+-h, --help          Print help information
 "
     );
 }
