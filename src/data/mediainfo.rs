@@ -1,7 +1,5 @@
-use std::collections::HashSet;
 use std::path::{Path,
                 PathBuf};
-use std::time::Duration;
 
 use color_eyre::{Help,
                  Report};
@@ -10,8 +8,6 @@ use serde::{Deserialize,
             Serialize};
 
 use super::chapter::Chapter;
-use crate::data::chapter::formatted_time;
-use crate::data::make_uri;
 
 const M4_EXTENSIONS: [&str; 2] = ["m4a", "m4b"];
 const VALID_EXTENSIONS: [&str; 8] = ["flac", "m4a", "m4b", "mp3", "mp4", "ogg", "opus", "wav"];
@@ -258,7 +254,20 @@ impl MediaInfo {
     }
 }
 
+#[cfg(not(feature = "mp4ameta"))]
 fn handle_m4(file_path: &PathBuf, path: &Path) -> EyreResult<Vec<Chapter>> {
+    let m4_chapters: Vec<Chapter> = vec![Chapter::new(file_path, path, None, None)];
+    Ok(m4_chapters)
+}
+
+#[cfg(feature = "mp4ameta")]
+fn handle_m4(file_path: &PathBuf, path: &Path) -> EyreResult<Vec<Chapter>> {
+    use std::collections::HashSet;
+    use std::time::Duration;
+
+    use crate::data::chapter::formatted_time;
+    use crate::data::make_uri;
+
     let mp4_tag = mp4ameta::Tag::read_from_path(file_path)?;
     let mut chapters: Vec<_> = mp4_tag.chapters().collect();
     let mut m4_chapters: Vec<Chapter> = Vec::new();
