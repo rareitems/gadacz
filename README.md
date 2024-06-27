@@ -34,6 +34,11 @@ cd gadacz
 cargo install --path .
 ```
 
+Or to build wihout mp4ameta:
+```
+cargo install --no-default-features --path .
+```
+
 ## Usage
 
 ```
